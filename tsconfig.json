@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "lib": ["es2017"],
+    "target": "es2017",
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src"
+    ],
+    "outDir": "build"
+  },
+  "include": [
+   "src", "src/types.d.ts"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "env": "config/dev.env",
+  "server": {
+    "port": 7373
+  }
+}
