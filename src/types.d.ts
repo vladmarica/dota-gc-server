@@ -36,6 +36,7 @@ declare module 'steam' {
 
   class SteamClient extends EventEmitter {
     connect(): void;
+    readonly connected: boolean;
   }
 
   enum EResult {

@@ -94,7 +94,11 @@ app.listen(PORT, async () => {
       clearTimeout(logOnTimer);
     }
     logOnTimer = setTimeout(() => {
-      steamUser.logOn(logOnOptions);
+      if (steamClient.connected) {
+        steamUser.logOn(logOnOptions);
+      } else {
+        steamClient.connect();
+      }
     }, delay);
   }
 
@@ -109,7 +113,7 @@ app.listen(PORT, async () => {
   });
 
   steamClient.on('error', (error) => {
-    logger.error('Steam error recieved', error);
+    logger.error('Steam error recieved ', error);
   });
 
   steamClient.on('loggedOff', (eresult) => {

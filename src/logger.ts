@@ -24,8 +24,8 @@ const backupLogger = createLogger({ level: 'debug', transports });
 if (process.env.NODE_ENV === 'production') {
   const HUMIO_INGEST_TOKEN = process.env.HUMIO_INGEST_TOKEN; // eslint-disable-line
   if (!HUMIO_INGEST_TOKEN) {
-      backupLogger.error('Environment variable HUMIO_INGEST_TOKEN must be set in production');
-      process.exit();
+    backupLogger.error('Environment variable HUMIO_INGEST_TOKEN must be set in production');
+    process.exit();
   }
 
   logger.add(
@@ -37,8 +37,8 @@ if (process.env.NODE_ENV === 'production') {
       },
       callback: (err?: Error) => {
         if (err) {
-            const code = err instanceof HumioError ? `(${(<HumioError> err).code})` : '';
-            backupLogger.error(`Failed to send log to Humio: '${err.message} ${code}'`);
+          const code = err instanceof HumioError ? `(${(<HumioError> err).code})` : '';
+          backupLogger.error(`Failed to send log to Humio: '${err.message} ${code}'`);
         }
       },
     })
