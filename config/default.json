@@ -1,5 +1,6 @@
 {
   "env": "config/dev.env",
+  "steam-servers-file": "servers.json",
   "server": {
     "port": 7373
   }

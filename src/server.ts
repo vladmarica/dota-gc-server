@@ -14,9 +14,6 @@ import logger from './logger';
 import { TaskResultStatus } from './queue';
 
 const PORT = config.get<number>('server.port');
-
-const steamClient = new steam.SteamClient();
-const steamUser = new steam.SteamUser(steamClient);
 const app = express();
 
 const stream: morgan.StreamOptions = { write: (str: string) => logger.http(str.trimRight()) };
@@ -70,6 +67,9 @@ app.listen(PORT, async () => {
     return;
   }
 
+  const steamClient = new steam.SteamClient();
+  const steamUser = new steam.SteamUser(steamClient);
+
   const logOnOptions: LogonOptions = {
     account_name: process.env.STEAM_USER_NAME!,
     password: process.env.STEAM_USER_PASSWORD!,
@@ -109,33 +109,49 @@ app.listen(PORT, async () => {
   });
 
   steamClient.on('servers', (servers) => {
-    logger.debug(`Steam recieved servers`);
+    logger.debug(`Steam recieved servers`, servers);
+    fs.writeFileSync(config.get('steam-servers-file'), servers, 'utf8');
   });
 
   steamClient.on('error', (error) => {
     logger.error('Steam error recieved ', error);
-  });
-
-  steamClient.on('loggedOff', (eresult) => {
-    logger.info('Steam client logged out: ' + eresult);
     scheduleLogOn(10000);
   });
 
-  steamClient.on('logOnResponse', (response) => {
-    if (response.eresult === steam.EResult.OK) {
-      logger.info('Steam log on successful');
+  steamClient.on('loggedOff', (eresult) => {
+    switch (eresult) {
+      case steam.EResult.LogonSessionReplaced: {
+        logger.error('Logged off - this account is already logged in elsewhere');
+        process.exit();
+      }
+      default: {
+        logger.info('Steam client logged out: ' + eresult);
+        scheduleLogOn(10000);
+      }
+    }
+  });
 
-      const dotaClient = getDota2Client(steamClient);
-      dotaClient.launch();
+  steamClient.on('logOnResponse', (response) => {
+    switch(response.eresult) {
+      // Login was successful
+      case steam.EResult.OK: {
+        logger.info('Steam log on successful');
+        const dotaClient = getDota2Client(steamClient);
+        dotaClient.launch();
+        break;
+      }
+
+      // Occurs when the Steam login server is unavailable, such as during Tuesday maintenance
+      case steam.EResult.ServiceUnavailable: {
+        logger.warn('Service unavailable - Steam is currently down');
+        scheduleLogOn(10000);
+        break;
+      }
+
+      default:
+        logger.error('Steam login failed: ' + response.eresult);
     }
-    else if (response.eresult === steam.EResult.ServiceUnavailable) {
-      logger.error('Service unavailable - Steam is currently down');
-      scheduleLogOn(10000);
-    }
-    else {
-      logger.error('Steam login failed: ' + response.eresult);
-    }
-  })
+  });
 
   steamUser.on('updateMachineAuth', function(sentry, callback) {
     logger.debug('updateMachineAuth');
