@@ -9,9 +9,12 @@ import fs from 'fs';
 dotenv.config({ path: config.get('env') });
 
 import redis, { MATCH_DETAILS_KEY_PREFIX } from './redis-database';
-import getDota2Client, { taskQueue } from './dota-client';
+import Dota2GCClient from './dota2-gc-client';
 import logger from './logger';
 import { TaskResultStatus } from './queue';
+import util from './util';
+
+let dotaClient: Dota2GCClient | null = null;
 
 const PORT = config.get<number>('server.port');
 const app = express();
@@ -40,7 +43,11 @@ app.get('/api/matches/:matchId', async (req, res) => {
   logger.info('No cached match detailed for ' + matchId);
 
   // Request match details from the GC, with a 3s timeout
-  const result = await taskQueue.enqueue({
+  if (dotaClient === null) {
+    return res.status(500).send({ status: TaskResultStatus.ERROR, message: 'Dota GC client unavailable' });
+  }
+
+  const result = await dotaClient.enqueueTask({
     type: 'match_details',
     match_id: matchId
   }, 3000);
@@ -115,6 +122,12 @@ app.listen(PORT, async () => {
 
   steamClient.on('error', (error) => {
     logger.error('Steam error recieved ', error);
+
+    if (dotaClient) {
+      dotaClient.exit();
+      dotaClient = null;
+    }
+
     scheduleLogOn(10000);
   });
 
@@ -136,7 +149,7 @@ app.listen(PORT, async () => {
       // Login was successful
       case steam.EResult.OK: {
         logger.info('Steam log on successful');
-        const dotaClient = getDota2Client(steamClient);
+        dotaClient = new Dota2GCClient(steamClient);
         dotaClient.launch();
         break;
       }

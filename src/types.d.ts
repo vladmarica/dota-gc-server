@@ -8,6 +8,7 @@ declare module 'dota2' {
     constructor(steamClient: SteamClient, debug1: boolean, debug2: boolean);
     
     launch(): void;
+    exit(): void;
     requestMatchDetails(matchId: number, callback: (err: any, matchData: any) => void): void;
 
     Logger: winston.Logger;
