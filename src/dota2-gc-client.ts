@@ -7,11 +7,32 @@ import redis, { MATCH_DETAILS_KEY_PREFIX } from './redis-database';
 const TASK_DELAY_MS = 3500;
 const MATCH_DETAILS_TIMEOUT_MS = 10000;
 
+async function requestMatchDetails(dotaClient: dota2.Dota2Client, matchId: number): Promise<TaskResult> {
+  const matchDetailsPromise = new Promise<TaskResult>((resolve, reject) => {
+    dotaClient!.requestMatchDetails(matchId, (err, matchData) => {
+      if (err) {
+        reject(err);
+      } else {
+        logger.info(`Successfully retrieved details from GC for match ${matchId}`);
+        resolve({ status: TaskResultStatus.SUCCESS, data: matchData.match });
+      }
+    });
+  });
+
+  return Promise.race<TaskResult>([
+    timer(MATCH_DETAILS_TIMEOUT_MS),
+    matchDetailsPromise,
+  ]);
+}
+
 export default class Dota2GCClient {
   private _dota2Client: dota2.Dota2Client; // Underlying implementation of the Dota 2 client
-  private _ready: boolean = false;
+
   private _taskQueue: TaskQueue;
+
   private _taskQueueWorkerTimeout: NodeJS.Timeout | null;
+
+  private _ready: boolean = false;
 
   constructor(steamClient: steam.SteamClient) {
     this._taskQueue = new TaskQueue();
@@ -31,7 +52,7 @@ export default class Dota2GCClient {
   public exit() {
     logger.info('Exiting Dota 2 client...');
     this._dota2Client.exit();
-    
+
     if (this._taskQueueWorkerTimeout !== null) {
       clearTimeout(this._taskQueueWorkerTimeout);
       this._taskQueueWorkerTimeout = null;
@@ -59,7 +80,7 @@ export default class Dota2GCClient {
               // Cache match details in Redis
               if (result.status === TaskResultStatus.SUCCESS) {
                 await redis.jsonSet(`${MATCH_DETAILS_KEY_PREFIX}${taskEntry.task.match_id}`, result.data);
-                logger.info('Cached match details for match ' + taskEntry.task.match_id);
+                logger.info(`Cached match details for match ${taskEntry.task.match_id}`);
               }
 
               break;
@@ -93,19 +114,4 @@ export default class Dota2GCClient {
     logger.warn('Dota 2 client unready');
     this._ready = false;
   }
-}
-
-async function requestMatchDetails(dotaClient: dota2.Dota2Client, matchId: number): Promise<TaskResult> {
-  const matchDetailsPromise = new Promise<TaskResult>((resolve, reject) => {
-    dotaClient!.requestMatchDetails(matchId, (err, matchData) => {
-      if (err) {
-        reject(err);
-      } else {
-        logger.info(`Successfully retrieved details from GC for match ${matchId}`)
-        resolve({ status: TaskResultStatus.SUCCESS, data: matchData.match });
-      }
-    });
-  });
-
-  return Promise.race<TaskResult>([timer(MATCH_DETAILS_TIMEOUT_MS), matchDetailsPromise])
 }

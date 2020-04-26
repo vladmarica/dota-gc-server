@@ -27,6 +27,13 @@ interface TaskEntry {
   callback: (result: TaskResult) => void;
 }
 
+
+export async function timer(timeoutMs: number): Promise<TaskResult> {
+  return new Promise<TaskResult>((resolve) => setTimeout(
+    () => resolve({ status: TaskResultStatus.TIME_OUT }), timeoutMs,
+  ));
+}
+
 export default class TaskQueue {
   private _queue: TaskEntry[] = [];
 
@@ -38,16 +45,11 @@ export default class TaskQueue {
         callback: resolve,
       });
     });
-    
+
     return Promise.race<TaskResult>([timer(timeoutMs), completionPromise]);
   }
 
   deqeueue(): TaskEntry | undefined {
     return this._queue.pop();
   }
-}
-
-export async function timer(timeoutMs: number): Promise<TaskResult> {
-  return new Promise<TaskResult>((resolve) => 
-    setTimeout(() => resolve({ status: TaskResultStatus.TIME_OUT }), timeoutMs));
 }

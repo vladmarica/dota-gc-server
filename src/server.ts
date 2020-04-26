@@ -1,5 +1,5 @@
 import express from 'express';
-import steam, { LogonOptions, SteamClient } from 'steam';
+import steam, { LogonOptions } from 'steam';
 import crypto from 'crypto';
 import morgan from 'morgan';
 import config from 'config';
@@ -8,11 +8,11 @@ import fs from 'fs';
 
 dotenv.config({ path: config.get('env') });
 
+/* eslint-disable import/first */
 import redis, { MATCH_DETAILS_KEY_PREFIX } from './redis-database';
 import Dota2GCClient from './dota2-gc-client';
 import logger from './logger';
 import { TaskResultStatus } from './queue';
-import util from './util';
 
 let dotaClient: Dota2GCClient | null = null;
 
@@ -33,14 +33,14 @@ app.get('/api/matches/:matchId', async (req, res) => {
   // Check if the match details are alreay cached in Redis
   const key = `${MATCH_DETAILS_KEY_PREFIX}${matchId}`;
   if (await redis.exists(key)) {
-    logger.info('Serving cached match details for ' + matchId);
+    logger.info(`Serving cached match details for ${matchId}`);
     return res.send({
       status: TaskResultStatus.SUCCESS,
       details: JSON.parse(await redis.jsonGet(key)),
     });
   }
 
-  logger.info('No cached match detailed for ' + matchId);
+  logger.info(`No cached match detailed for ${matchId}`);
 
   // Request match details from the GC, with a 3s timeout
   if (dotaClient === null) {
@@ -49,13 +49,13 @@ app.get('/api/matches/:matchId', async (req, res) => {
 
   const result = await dotaClient.enqueueTask({
     type: 'match_details',
-    match_id: matchId
+    match_id: matchId,
   }, 3000);
 
   if (result.status === TaskResultStatus.TIME_OUT) {
-    return res.send({ status: result.status, message: 'No result in time'});
+    return res.send({ status: result.status, message: 'No result in time' });
   }
-  else if (result.status === TaskResultStatus.SUCCESS) {
+  if (result.status === TaskResultStatus.SUCCESS) {
     return res.send({ status: result.status, details: result.data });
   }
 
@@ -80,13 +80,12 @@ app.listen(PORT, async () => {
   const logOnOptions: LogonOptions = {
     account_name: process.env.STEAM_USER_NAME!,
     password: process.env.STEAM_USER_PASSWORD!,
-  }
+  };
 
   try {
     logOnOptions.sha_sentryfile = fs.readFileSync('sentry');
-  }
-  catch (err){
-    logger.error("Cannot load the sentry file " + err);
+  } catch (err) {
+    logger.error(`Cannot load the sentry file: ${err}`);
     process.exit();
     return;
   }
@@ -96,7 +95,7 @@ app.listen(PORT, async () => {
   let logOnTimer: NodeJS.Timeout | undefined;
   function scheduleLogOn(delay: number) {
     logger.info(`Scheduling Steam log on in ${delay}ms`);
-    
+
     if (logOnTimer) {
       clearTimeout(logOnTimer);
     }
@@ -116,7 +115,7 @@ app.listen(PORT, async () => {
   });
 
   steamClient.on('servers', (servers) => {
-    logger.debug(`Steam recieved servers`, servers);
+    logger.debug('Steam recieved servers');
     fs.writeFileSync(config.get('steam-servers-file'), servers, 'utf8');
   });
 
@@ -131,21 +130,22 @@ app.listen(PORT, async () => {
     scheduleLogOn(10000);
   });
 
-  steamClient.on('loggedOff', (eresult) => {
-    switch (eresult) {
+  steamClient.on('loggedOff', (result) => {
+    switch (result) {
       case steam.EResult.LogonSessionReplaced: {
         logger.error('Logged off - this account is already logged in elsewhere');
         process.exit();
+        break;
       }
       default: {
-        logger.info('Steam client logged out: ' + eresult);
+        logger.info(`Steam client logged out: ${result}`);
         scheduleLogOn(10000);
       }
     }
   });
 
   steamClient.on('logOnResponse', (response) => {
-    switch(response.eresult) {
+    switch (response.eresult) {
       // Login was successful
       case steam.EResult.OK: {
         logger.info('Steam log on successful');
@@ -162,14 +162,15 @@ app.listen(PORT, async () => {
       }
 
       default:
-        logger.error('Steam login failed: ' + response.eresult);
+        logger.error(`Steam login failed: ${response.eresult}`);
     }
   });
 
-  steamUser.on('updateMachineAuth', function(sentry, callback) {
-    logger.debug('updateMachineAuth');
-    var hashedSentry = crypto.createHash('sha1').update(sentry.bytes).digest();
-    fs.writeFileSync('sentry', hashedSentry)
+  steamUser.on('updateMachineAuth', (sentry, callback) => {
+    logger.debug('Steam requesting updateMachineAuth');
+
+    const hashedSentry = crypto.createHash('sha1').update(sentry.bytes).digest();
+    fs.writeFileSync('sentry', hashedSentry);
     callback({ sha_file: hashedSentry });
   });
 });

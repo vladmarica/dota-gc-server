@@ -15,7 +15,7 @@ async function getModules(): Promise<string[]> {
       if (err) {
         reject(err);
       } else {
-        const moduleList = res.map(moduleInfo => moduleInfo[1]);
+        const moduleList = res.map((moduleInfo) => moduleInfo[1]);
         resolve(moduleList);
       }
     });
@@ -36,13 +36,13 @@ async function exists(key: string): Promise<boolean> {
 
 async function jsonSet(key: string, object: any): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    client.sendCommand('json.set', [key, '.', JSON.stringify(object)], (err, res) => {
+    client.sendCommand('json.set', [key, '.', JSON.stringify(object)], (err) => {
       if (err) {
         reject(err);
       } else {
         resolve();
       }
-    })
+    });
   });
 }
 
@@ -54,7 +54,7 @@ async function jsonGet(key: string): Promise<any> {
       } else {
         resolve(res);
       }
-    })
+    });
   });
 }
 

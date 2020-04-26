@@ -41,7 +41,7 @@ if (process.env.NODE_ENV === 'production') {
           backupLogger.error(`Failed to send log to Humio: '${err.message} ${code}'`);
         }
       },
-    })
+    }),
   );
 }
 

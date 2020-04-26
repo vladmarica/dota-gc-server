@@ -1,3 +1,7 @@
+/* eslint-disable import/no-duplicates */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable lines-between-class-members */
+
 // Basic TypeScript definitions for the 'dota2' package
 declare module 'dota2' {
   import { EventEmitter } from 'events';
@@ -6,7 +10,7 @@ declare module 'dota2' {
 
   class Dota2Client extends EventEmitter {
     constructor(steamClient: SteamClient, debug1: boolean, debug2: boolean);
-    
+
     launch(): void;
     exit(): void;
     requestMatchDetails(matchId: number, callback: (err: any, matchData: any) => void): void;
@@ -20,7 +24,7 @@ declare module 'dota2' {
 declare module 'steam' {
   import { EventEmitter } from 'events';
 
-  export var servers: any;
+  export var servers: any; /* eslint-disable-line */
 
   export interface LogonOptions {
     account_name: string,

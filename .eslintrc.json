@@ -1,0 +1,36 @@
+{
+  "extends": [
+    "airbnb-typescript/base"
+  ],
+  "plugins": [],
+  "rules": {
+    "indent": ["off", 2],
+    "@typescript-eslint/indent": ["error", 2],
+    "class-methods-use-this": ["off"],
+    "no-plusplus": ["off"],
+    "no-bitwise": ["off"],
+    "object-curly-newline": ["off"],
+    "max-len": ["error", { "code": 120 }],
+    "no-param-reassign": [ "error", { "props": true, "ignorePropertyModificationsFor": ["state"] }],
+    "no-multi-str": ["off"],
+    "no-underscore-dangle": ["off"],
+    "max-classes-per-file": ["off"]
+  },
+  "parserOptions": {
+    "parser": "@typescript-eslint/parser",
+    "project": [
+      "./tsconfig.json"
+    ],
+    "ecmaFeatures": {
+      "modules": true
+    }
+  },
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      },
+      "extensions": [".js", ".jsx", ".ts", ".tsx"]
+    }
+  }
+}
