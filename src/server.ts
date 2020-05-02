@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import morgan from 'morgan';
 import config from 'config';
 import dotenv from 'dotenv';
+import ms from 'ms';
 import fs from 'fs';
 
 dotenv.config({ path: config.get('env') });
@@ -16,6 +17,8 @@ import { TaskResultStatus } from './queue';
 
 let dotaClient: Dota2GCClient | null = null;
 
+const SENTINEL_INTERVAL_MS = ms('5m');
+const SENTINEL_UNREADY_DURATION_CUTOFF = ms('29m');
 const PORT = config.get<number>('server.port');
 const app = express();
 
@@ -62,9 +65,34 @@ app.get('/api/matches/:matchId', async (req, res) => {
   return res.send({ status: result.status });
 });
 
+/** Timestamp in milliseconds of the first time the Dota 2 client was unready. */
+let firstUnreadyTime: number | undefined;
+
+/**
+ * Checks if the Dota 2 client has been in the 'unready' state for a long time.
+ * If so, the Dota 2 client is in an unreliable state and the process exits.
+ */
+async function clientSentinel() {
+  if (dotaClient) {
+    if (!dotaClient.isReady()) {
+      const currentTime = Date.now();
+      if (firstUnreadyTime && currentTime - firstUnreadyTime > SENTINEL_UNREADY_DURATION_CUTOFF) {
+        logger.warn('Dota 2 client has been unready for 30 minutes, restarting...');
+        process.exit();
+      } else if (!firstUnreadyTime) {
+        firstUnreadyTime = currentTime;
+      }
+    } else {
+      firstUnreadyTime = undefined;
+    }
+  }
+}
 
 app.listen(PORT, async () => {
   logger.info(`Running dota-gc-server on port ${PORT}`);
+
+  // Run the client sentinel function periodically
+  setInterval(clientSentinel, SENTINEL_INTERVAL_MS);
 
   // Check Redis connection and ensure ReJSON module is installed
   const redisModules = await redis.getModules();
@@ -72,6 +100,13 @@ app.listen(PORT, async () => {
     logger.error('Redis server missing required module ReJSON');
     process.exit();
     return;
+  }
+
+  // Load cached servers if they exists
+  const serversFile = config.get<string>('steam-servers-file');
+  if (fs.existsSync(serversFile)) {
+    steam.servers = JSON.parse(fs.readFileSync(serversFile, 'utf8'));
+    logger.info('Loaded Steam servers from file');
   }
 
   const steamClient = new steam.SteamClient();
@@ -116,7 +151,7 @@ app.listen(PORT, async () => {
 
   steamClient.on('servers', (servers) => {
     logger.debug('Steam recieved servers');
-    fs.writeFileSync(config.get('steam-servers-file'), servers, 'utf8');
+    fs.writeFileSync(config.get('steam-servers-file'), JSON.stringify(servers), 'utf8');
   });
 
   steamClient.on('error', (error) => {

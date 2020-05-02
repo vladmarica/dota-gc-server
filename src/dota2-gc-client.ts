@@ -63,6 +63,10 @@ export default class Dota2GCClient {
     this._dota2Client.launch();
   }
 
+  public isReady(): boolean {
+    return this._ready;
+  }
+
   private async taskQueueWorker() {
     if (!this._ready) {
       logger.debug('Dota 2 client is not ready');
