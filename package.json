@@ -33,7 +33,7 @@
     "config": "^3.3.1",
     "dota2": "^7.0.3",
     "dotenv": "^8.2.0",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "forever": "^2.0.0",
     "humio-winston": "^1.0.6",
     "morgan": "^1.10.0",
